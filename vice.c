@@ -17,7 +17,7 @@ GtkWidget *minibuffer;
 GtkWidget *editor;
 ScintillaObject *sci;
 
-lua_State *L;
+lua_State *vice_lua_state;
 
 #define SSM(m, w, l) scintilla_send_message(sci, m, w, l)
 
@@ -26,18 +26,21 @@ static int exit_app(GtkWidget*w, GdkEventAny*e, gpointer p) {
    return w||e||p||1;	// Avoid warnings
 }
 
-static gboolean handle_keypress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
-    lua_pushstring(L, "keyboard_event_handler");
-    lua_gettable(L, LUA_GLOBALSINDEX);               /* function to be called */
-    lua_pushnumber(L, event->keyval);
-    lua_call(L, 1, 0);
-
-    if(event->keyval == GDK_Escape) {
-        gtk_entry_set_text(GTK_ENTRY(minibuffer), "blah");        
-    } else {
-        SSM(SCI_INSERTTEXT, 0, (sptr_t) "blah");
+static int minibuffer_write(lua_State *L) {
+    if(!lua_isstring(L, 1)) {
+        lua_pushstring(L, "incorrect argument to function `display'");
+        lua_error(L);
     }
-    
+
+    gtk_entry_set_text(GTK_ENTRY(minibuffer), lua_tostring(L, 1)); 
+    return 0; 
+}
+
+static gboolean handle_keypress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+    lua_pushstring(vice_lua_state, "keyboard_event_handler");
+    lua_gettable(vice_lua_state, LUA_GLOBALSINDEX);               /* function to be called */
+    lua_pushstring(vice_lua_state, gdk_keyval_name(event->keyval));
+    lua_call(vice_lua_state, 1, 0);
     return TRUE;
 }
 
@@ -71,20 +74,22 @@ int main(int argc, char **argv) {
     SSM(SCI_STYLESETBOLD, SCE_C_OPERATOR, 1);
     int len = 0;
 
-    L = lua_open();
+    vice_lua_state = lua_open();
 
-    luaopen_io(L); // provides io.*
-    luaopen_base(L);
-    luaopen_table(L);
-    luaopen_string(L);
-    luaopen_math(L);
-    luaopen_loadlib(L);
+    luaopen_io(vice_lua_state); // provides io.*
+    luaopen_base(vice_lua_state);
+    luaopen_table(vice_lua_state);
+    luaopen_string(vice_lua_state);
+    luaopen_math(vice_lua_state);
+    luaopen_loadlib(vice_lua_state);
+    
+    lua_register(vice_lua_state, "display", minibuffer_write);
 
-    int s = luaL_loadfile(L, "main.lua");
+    int s = luaL_loadfile(vice_lua_state, "main.lua");
 
     if ( s==0 ) {
       // execute Lua program
-      s = lua_pcall(L, 0, LUA_MULTRET, 0);
+      s = lua_pcall(vice_lua_state, 0, LUA_MULTRET, 0);
     }
 
     SSM(SCI_GETLENGTH, len, 0);
