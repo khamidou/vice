@@ -1,4 +1,5 @@
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <stdio.h>
 
 #include <Scintilla.h>
@@ -6,19 +7,32 @@
 #define PLAT_GTK 1
 #include <ScintillaWidget.h>
 
+GtkWidget *app;
+GtkWidget *vbox;
+GtkWidget *minibuffer;
+
+GtkWidget *editor;
+ScintillaObject *sci;
+
+#define SSM(m, w, l) scintilla_send_message(sci, m, w, l)
+
 static int exit_app(GtkWidget*w, GdkEventAny*e, gpointer p) {
    gtk_main_quit();
    return w||e||p||1;	// Avoid warnings
 }
 
+static gboolean handle_keypress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+    puts("ho");
+    if(event->keyval == GDK_Escape) {
+        gtk_entry_set_text(GTK_ENTRY(minibuffer), "blah");        
+    } else {
+        SSM(SCI_INSERTTEXT, 0, (sptr_t) "blah");
+    }
+
+    return TRUE;
+}
+
 int main(int argc, char **argv) {
-    GtkWidget *app;
-    GtkWidget *vbox;
-    GtkWidget *minibuffer;
-
-    GtkWidget *editor;
-    ScintillaObject *sci;
-
     gtk_init(&argc, &argv);
     app = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     editor = scintilla_new();
@@ -32,11 +46,11 @@ int main(int argc, char **argv) {
 
     gtk_signal_connect(GTK_OBJECT(app), "delete_event",
             GTK_SIGNAL_FUNC(exit_app), 0);
+    gtk_signal_connect(GTK_OBJECT(app), "key_press_event", GTK_SIGNAL_FUNC(handle_keypress), 0);
 
     scintilla_set_id(sci, 0);
     gtk_widget_set_usize(editor, 800, 600);
 
-#define SSM(m, w, l) scintilla_send_message(sci, m, w, l)
 
     SSM(SCI_STYLECLEARALL, 0, 0);
     SSM(SCI_SETLEXER, SCLEX_CPP, 0);
@@ -47,11 +61,6 @@ int main(int argc, char **argv) {
     SSM(SCI_STYLESETFORE, SCE_C_WORD, 0x800000);
     SSM(SCI_STYLESETFORE, SCE_C_STRING, 0x800080);
     SSM(SCI_STYLESETBOLD, SCE_C_OPERATOR, 1);
-    SSM(SCI_INSERTTEXT, 0, (sptr_t)
-            "int main(int argc, char **argv) {\n"
-            "    // Start up the gnome\n"
-            "    gnome_init(\"stest\", \"1.0\", argc, argv);\n}"
-       );
     int len = 0;
     SSM(SCI_GETLENGTH, len, 0);
     printf("length: %d\n", len);
