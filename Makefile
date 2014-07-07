@@ -12,8 +12,8 @@ LEXEROBJS=$(wildcard ../scintilla/gtk/Lex*.o)
 all: vice
 
 .c.o:
-	gcc `pkg-config --cflags gtk+-2.0` $(INCLUDEDIRS) $(CXXFLAGS) -c $< -o $@
+	gcc `pkg-config --cflags gtk+-2.0` `lua-config --include` $(INCLUDEDIRS) $(CXXFLAGS) -c $< -o $@
 vice: vice.o $(LEXEROBJS) ./scintilla/bin/scintilla.a
-	gcc -DGTK $^ -o $@ -lstdc++ `pkg-config --libs gtk+-2.0 gthread-2.0 gmodule-2.0` -lm
+	gcc -DGTK $^ -o $@ -lstdc++ `pkg-config --libs gtk+-2.0 gthread-2.0 gmodule-2.0` `lua-config --libs` -lm 
 clean:
 	rm -rf vice *.o
