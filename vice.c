@@ -36,6 +36,13 @@ static int minibuffer_write(lua_State *L) {
     return 0; 
 }
 
+static int get_cursor_position(lua_State *L) {
+    int len = 0;
+    len = SSM(SCI_GETCURRENTPOS, 0, 0);
+    lua_pushnumber(L, len);
+    return 1;
+}
+
 static gboolean handle_keypress(GtkWidget *widget, GdkEventKey *event, gpointer data) {
     lua_pushstring(vice_lua_state, "keyboard_event_handler");
     lua_gettable(vice_lua_state, LUA_GLOBALSINDEX);               /* function to be called */
@@ -72,7 +79,6 @@ int main(int argc, char **argv) {
     SSM(SCI_STYLESETFORE, SCE_C_WORD, 0x800000);
     SSM(SCI_STYLESETFORE, SCE_C_STRING, 0x800080);
     SSM(SCI_STYLESETBOLD, SCE_C_OPERATOR, 1);
-    int len = 0;
 
     vice_lua_state = lua_open();
 
@@ -84,6 +90,7 @@ int main(int argc, char **argv) {
     luaopen_loadlib(vice_lua_state);
     
     lua_register(vice_lua_state, "display", minibuffer_write);
+    lua_register(vice_lua_state, "get_cursor_position", get_cursor_position);
 
     int s = luaL_loadfile(vice_lua_state, "main.lua");
 
@@ -92,8 +99,7 @@ int main(int argc, char **argv) {
       s = lua_pcall(vice_lua_state, 0, LUA_MULTRET, 0);
     }
 
-    SSM(SCI_GETLENGTH, len, 0);
-    printf("length: %d\n", len);
+    SSM(SCI_INSERTTEXT, 0, (sptr_t) "YOLO SWAG");
 
     gtk_widget_show_all(app);
     gtk_widget_grab_focus(GTK_WIDGET(editor));
